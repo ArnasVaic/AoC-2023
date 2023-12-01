@@ -65,10 +65,6 @@ public class Day01 : IDay
                     .Concat(numLastPairs)
                     .ToList();
                 
-                foreach (var p in combined)
-                    Console.Write($"[{p.Item2}]={p.Item1} ");
-                Console.WriteLine();
-
                 var fst = combined.MinBy(x => x.Item2).Item1; 
                 var snd = combined.MaxBy(x => x.Item2).Item1;
                 
