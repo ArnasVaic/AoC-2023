@@ -39,22 +39,27 @@ public static class Program
         var part2MethodInfo = type.GetMethod(nameof(IDay.Part2)) 
         ?? throw new Exception($"Could not get method info of Part2."); 
 
-        object[] methodMiniArgs = [$"Inputs/Day{dayNumber:D2}-mini.txt"];
-        object[] methodArgs = [$"Inputs/Day{dayNumber:D2}.txt"];
-
-        var mini1Answer = part1MethodInfo.Invoke(instance, methodMiniArgs);
+        object[][] methodArgs = 
+        [
+            [$"Inputs/Day{dayNumber:D2}-part1-mini.txt"],
+            [$"Inputs/Day{dayNumber:D2}-part1.txt"],
+            [$"Inputs/Day{dayNumber:D2}-part2-mini.txt"],
+            [$"Inputs/Day{dayNumber:D2}-part2.txt"]
+        ];
+        
+        var mini1Answer = part1MethodInfo.Invoke(instance, methodArgs[0]);
 
         var backupOut = Console.Out;
 
         Console.SetOut(TextWriter.Null);
-        var part1Answer = part1MethodInfo.Invoke(instance, methodArgs);
+        var part1Answer = part1MethodInfo.Invoke(instance, methodArgs[1]);
         Console.SetOut(backupOut);
 
 
-        var mini2Answer = part2MethodInfo.Invoke(instance, methodMiniArgs);
+        var mini2Answer = part2MethodInfo.Invoke(instance, methodArgs[2]);
 
         Console.SetOut(TextWriter.Null);
-        var part2Answer = part2MethodInfo.Invoke(instance, methodArgs);
+        var part2Answer = part2MethodInfo.Invoke(instance, methodArgs[3]);
         Console.SetOut(backupOut);
 
         Console.WriteLine($"Day {dayNumber:D2}");
