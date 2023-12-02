@@ -1,21 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>AoC_2023</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="Inputs\**\*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <ProjectReference Include="../AoC-2023/AoC-2023.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ParsecSharp" Version="3.5.0" />
+    <PackageReference Include="Xunit" Version="2.6.2" />
   </ItemGroup>
 
 </Project>

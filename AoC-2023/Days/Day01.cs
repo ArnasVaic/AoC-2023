@@ -2,10 +2,9 @@ namespace AoC2023.Days;
 
 public class Day01 : IDay
 {
-    public string Part1(string filename)
+    public string Part1(string input)
     {
-        var number = File
-            .ReadAllText(filename)
+        var number = input
             .Split('\n')
             .Where(line => line != string.Empty)
             .Sum(line =>
@@ -31,10 +30,9 @@ public class Day01 : IDay
         { "nine", 9 },
     };
  
-    public string Part2(string filename)
+    public string Part2(string input)
     {
-        var number = File
-            .ReadAllText(filename)
+        var number = input
             .Split('\n')
             .Where(line => line != string.Empty)
             .Sum(line =>
