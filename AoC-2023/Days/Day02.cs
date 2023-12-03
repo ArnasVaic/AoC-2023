@@ -3,7 +3,7 @@ using ParsecSharp;
 using static ParsecSharp.Parser;
 using static ParsecSharp.Text;
 
-namespace AoC2023.Days;
+namespace AoC2023.Days.Day02;
 
 public class Day02 : IDay
 {

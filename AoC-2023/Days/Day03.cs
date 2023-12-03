@@ -3,206 +3,164 @@ using ParsecSharp;
 using static ParsecSharp.Parser;
 using static ParsecSharp.Text;
 using static System.Linq.Enumerable;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
-namespace AoC2023.Days;
+namespace AoC2023.Days.Day03;
 
-public class Day03 : IDay
+public abstract record Cell;
+public record EmptyCell : Cell;
+public record SymbolCell(char Symbol) : Cell;
+public record NumberCell(int Number, Guid Id) : Cell;
+
+public readonly struct Coord(int row, int col)
 {
+    public int Row { get; } = row;
+    public int Col { get; } = col;
 
-    public abstract class Cell
+    public static Coord operator + (Coord lhs, Coord rhs) => 
+        new(lhs.Row + rhs.Row, lhs.Col + rhs.Col);
+
+    public bool InsideRect(
+        int bottom,
+        int top,
+        int left,
+        int right
+    ) => Row >= bottom && Row <= top && Col >= left && Col <= right;
+};
+
+[method: SetsRequiredMembers]
+public class Schematic(Cell[][] numberGrid) : IData
+{
+    public int Height => numberGrid.Length;
+
+    public int Width => numberGrid[0].Length;
+
+    Cell At(Coord coord) => numberGrid[coord.Row][coord.Col];
+
+    Cell At(int row, int col) => numberGrid[row][col];
+
+    public Guid CellId(Coord coord) 
     {
+        var cell = At(coord);
 
+        if(cell is NumberCell numberCell)
+            return numberCell.Id;
+
+        throw new InvalidOperationException("Cell is not a number cell.");
     }
 
-    public class EmptyCell : Cell
+    public int CellNumber(Coord coord) 
     {
+        var cell = At(coord);
+
+        if(cell is NumberCell numberCell)
+            return numberCell.Number;
+
+        throw new InvalidOperationException("Cell is not a number cell.");
     }
 
-    public class SymbolCell(char symbol) : Cell
+    public bool IsNumber(Coord coord) => At(coord) is NumberCell;
+
+    public bool CoordInsideGrid(Coord coord) =>
+        coord.InsideRect(0, Height - 1, 0, Width - 1);
+
+    private static readonly Coord[] NeighborOffsets = [
+        new(-1, -1), new(-1, 0), new(-1, 1),
+        new( 0, -1),             new( 0, 1),
+        new( 1, -1), new( 1, 0), new( 1, 1),
+    ];
+
+    private IEnumerable<Coord> GetNeighborCoords(Coord point) => 
+        NeighborOffsets
+        .Select(offset => point + offset)
+        .Where(CoordInsideGrid);
+
+    private List<Coord> GetSymbolCoords(Predicate<char> predicate)
     {
-        public char Symbol { get; } = symbol;
+        var symbolCoords = new List<Coord>();
+        for(var row = 0; row < Height; ++row)
+            for(var col = 0; col < Width; ++col)
+                if(At(row, col) is SymbolCell symbol && predicate(symbol.Symbol))
+                    symbolCoords.Add(new(row, col));
+
+        return symbolCoords;
     }
 
-    public class NumberCell(int number, Guid id) : Cell
-    {
-        public int Number { get; } = number;
-        public Guid Id { get; } = id;
-    }
+    public IEnumerable<Coord> NeighborNumberCellCoords(Coord coord) =>
+        GetNeighborCoords(coord)
+        .Where(IsNumber)
+        .DistinctBy(CellId);
 
-    [method: SetsRequiredMembers]
-    public class Schematic(Cell[][] numberGrid)
-    {
-        public required Cell[][] NumberGrid { get; init; } = numberGrid;
+    public string Part1() =>
+        // All symbol coordinates
+        GetSymbolCoords(_ => true)
 
-        private HashSet<(int Row, int Col)> GetNeighborCoords((int Row, int Col) point) => 
-            new List<(int, int)>
-            {
-                (point.Row - 1, point.Col - 1), (point.Row - 1, point.Col), (point.Row - 1, point.Col + 1),
-                (point.Row + 0, point.Col - 1),                             (point.Row + 0, point.Col + 1),
-                (point.Row + 1, point.Col - 1), (point.Row + 1, point.Col), (point.Row + 1, point.Col + 1),
-            }
-            .Where(p => p.Item1 >= 0 && p.Item1 < NumberGrid.Length)
-            .Where(p => p.Item2 >= 0 && p.Item2 < NumberGrid[0].Length)
-            .ToHashSet();
+        // For each, select neighbor numbers
+        .SelectMany(NeighborNumberCellCoords)
 
-        private HashSet<(int Row, int Col)> GetSymbolLocations(Predicate<char> predicate)
-        {
-            var symbolCoords = new HashSet<(int, int)>();
-            
-            for(var i = 0; i < NumberGrid.Length; ++i)
-                for(var j = 0; j < NumberGrid[i].Length; ++j)
-                    if(NumberGrid[i][j] is SymbolCell symbol && predicate(symbol.Symbol))
-                        symbolCoords.Add((i, j));
+        // Sum part numbers
+        .Sum(CellNumber)
 
-            return symbolCoords;
-        }
+        .ToString();
 
-        public int PartSum()
-        {
-            var uniquePartCoordinates = 
-                GetSymbolLocations(_ => true)
-                .SelectMany(symbolCoord => 
-                    GetNeighborCoords(symbolCoord)
-                    .Where(partCoord => NumberGrid[partCoord.Row][partCoord.Col] is NumberCell))
-                .DistinctBy(partCoord =>
-                {
-                    var cell = NumberGrid[partCoord.Row][partCoord.Col] as NumberCell;
-                    return cell!.Id;
-                });
+    public string Part2() => 
+        // '*' symbol coordinates
+        GetSymbolCoords('*'.Equals)
+        
+        // Select coordinates of neighbor cells that are number cells
+        .Select(NeighborNumberCellCoords)
 
-            return uniquePartCoordinates.Sum(partCoord =>
-            {
-                var cell = NumberGrid[partCoord.Row][partCoord.Col] as NumberCell;
-                return cell!.Number;
-            });
-        }
+        // Gears have only two number cells
+        .Where(coords => coords.Count() is 2)
 
-        public int GearSum()
-        {
-            return GetSymbolLocations('*'.Equals)
+        // Sum all gear part number products
+        .Sum(coord => coord.Select(CellNumber).Aggregate((p, q) => p * q))
+        .ToString();
+}
 
-                // Filter out non gear symbols (count of numbers around it is not 2)
-                .Where(symbolCoord =>
-                {
-                    var neighborCoords = GetNeighborCoords(symbolCoord);
-
-                    var numberNeighborCoords = neighborCoords
-                        .Where(c => NumberGrid[c.Row][c.Col] is NumberCell)
-                        .DistinctBy(c =>
-                        {
-                            var cell = NumberGrid[c.Row][c.Col] as NumberCell;
-                            return cell!.Id;
-                        });
-
-                    return numberNeighborCoords.Count() == 2;
-                })
-
-                // Get coordinates of the parts around them
-                .Select(symbolCoord => {
-
-                    var neighborCoords = GetNeighborCoords(symbolCoord);
-
-                    var numberNeighborCoords = neighborCoords
-                        .Where(c => NumberGrid[c.Row][c.Col] is NumberCell)
-                        .DistinctBy(c =>
-                        {
-                            var cell = NumberGrid[c.Row][c.Col] as NumberCell;
-                            return cell!.Id;
-                        });
-
-                    return numberNeighborCoords;
-                })
- 
-                // Sum part number products for each gear
-                .Sum(partCoords =>
-                {
-                    // Multiply all part numbers around each gear 
-                    var value = partCoords.Select(coord =>
-                    {
-                        var cell = NumberGrid[coord.Row][coord.Col] as NumberCell;
-                        return cell!.Number;
-                    }).Aggregate((p, q) => p * q);
-
-                    
-                    return value;
-                });
-        }
-    }
-
-    public static int Length(int num) => $"{num}".Length;
-
-    public static Parser<char, Schematic> BuildInputParser()
+public class Day03 : DayBase<Schematic>, IDay
+{
+    protected override Parser<char, Schematic> BuildParser()
     {
         var integer = OneOf("123456789").Append(Many(DecDigit())).ToInt();
 
-        var number = integer.Map(num => new NumberCell(num, Guid.NewGuid())  as dynamic);
+        var number = 
+            integer
+            .Map(num => new NumberCell(num, Guid.NewGuid()) as dynamic);
 
-        var empty = Char('.').Map(_ => new EmptyCell() as dynamic);
+        var empty = 
+            Char('.')
+            .Map(_ => new EmptyCell() as dynamic);
 
-        var symbol = Satisfy(c => !"0123456789.\r\n".Contains(c)).Map(c => new SymbolCell(c) as dynamic);
-
+        var symbol = 
+            Satisfy(c => !"0123456789.\r\n".Contains(c))
+            .Map(c => new SymbolCell(c) as dynamic);
 
         var cell = Choice(number, empty, symbol);
 
-        var line = Many1(cell)
+        var line = 
+            Many1(cell)
             .Left(String("\r\n"))
             .Map(cells => cells.SelectMany<dynamic, dynamic>(c =>
             {
-                return Enumerable.Repeat(c, c is NumberCell numberCell? Length(numberCell.Number) : 1);
+                return Enumerable.Repeat(c, c is NumberCell numberCell? $"{numberCell.Number}".Length : 1);
             }));
          
-        var lines = Many1(line).Map(lines =>
-        {
-            // Cast array element type from dynamic to Cell 
-            var arrays = lines.Select(l => l
-                    .Cast<Cell>().ToArray())
-                .Cast<Cell[]>().ToArray();
-
-            return new Schematic(arrays);
-        });
-
-        return lines;
-    }
-
-    public string Part1(string input)
-    {
-        var parser = BuildInputParser(); 
-
-        var result = parser.Parse(input);
-
-        string answer = string.Empty;
-        
-        result.CaseOf(
-            failure => answer = failure.Message,
-            success =>
+        var schematic = 
+            Many1(line)
+            .Map(lines =>
             {
-                var schematic = success.Value;
-                answer = $"{schematic.PartSum()}";
-            }
-        );
+                // Cast array element type from dynamic to Cell 
+                var arrays = lines.Select(l => l
+                        .Cast<Cell>().ToArray())
+                    .Cast<Cell[]>().ToArray();
 
-        return answer;
+                return new Schematic(arrays);
+            });
+
+        return schematic;
     }
 
-    public string Part2(string input)
-    {
-        var parser = BuildInputParser(); 
+    public string Part1(string input) => SolvePart1(input);
 
-        var result = parser.Parse(input);
-
-        string answer = string.Empty;
-        
-        result.CaseOf(
-            failure => answer = failure.Message,
-            success =>
-            {
-                var schematic = success.Value;
-                answer = $"{schematic.GearSum()}";
-            }
-        );
-
-        return answer;
-    }
+    public string Part2(string input) => SolvePart2(input);
 }

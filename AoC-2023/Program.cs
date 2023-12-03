@@ -82,7 +82,7 @@ public static class Program
         if(!dayNumber.HasValue)
             return;
 
-        var typeName = $"AoC2023.Days.Day{dayNumber:D2}";
+        var typeName = $"AoC2023.Days.Day{dayNumber:D2}.Day{dayNumber:D2}";
         var type = Type.GetType(typeName);
             
         if(type is null)

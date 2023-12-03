@@ -1,4 +1,4 @@
-namespace AoC2023.Days;
+namespace AoC2023.Days.Day01;
 
 public class Day01 : IDay
 {
