@@ -20,8 +20,9 @@ public class Day03 : IDay
     {
     }
 
-    public class SymbolCell : Cell
+    public class SymbolCell(char symbol) : Cell
     {
+        public char Symbol { get; } = symbol;
     }
 
     public class NumberCell(int number, Guid id) : Cell
@@ -31,39 +32,101 @@ public class Day03 : IDay
     }
 
     [method: SetsRequiredMembers]
-    public class Schematic(HashSet<(int, int)> symbolCoordinates, Cell[][] numberGrid)
+    public class Schematic(Cell[][] numberGrid)
     {
-        public required HashSet<(int Row, int Col)> SymbolCoordinates { get; init; } = symbolCoordinates;
-
         public required Cell[][] NumberGrid { get; init; } = numberGrid;
 
-        private HashSet<(int Row, int Col)> GetNeighborCoords(int row, int col) => 
+        private HashSet<(int Row, int Col)> GetNeighborCoords((int Row, int Col) point) => 
             new List<(int, int)>
             {
-                (row - 1, col - 1), (row - 1, col), (row - 1, col + 1),
-                (row + 0, col - 1),                 (row + 0, col + 1),
-                (row + 1, col - 1), (row + 1, col), (row + 1, col + 1),
+                (point.Row - 1, point.Col - 1), (point.Row - 1, point.Col), (point.Row - 1, point.Col + 1),
+                (point.Row + 0, point.Col - 1),                             (point.Row + 0, point.Col + 1),
+                (point.Row + 1, point.Col - 1), (point.Row + 1, point.Col), (point.Row + 1, point.Col + 1),
             }
             .Where(p => p.Item1 >= 0 && p.Item1 < NumberGrid.Length)
             .Where(p => p.Item2 >= 0 && p.Item2 < NumberGrid[0].Length)
             .ToHashSet();
 
+        private HashSet<(int Row, int Col)> GetSymbolLocations(Predicate<char> predicate)
+        {
+            var symbolCoords = new HashSet<(int, int)>();
+            
+            for(var i = 0; i < NumberGrid.Length; ++i)
+                for(var j = 0; j < NumberGrid[i].Length; ++j)
+                    if(NumberGrid[i][j] is SymbolCell symbol && predicate(symbol.Symbol))
+                        symbolCoords.Add((i, j));
+
+            return symbolCoords;
+        }
+
         public int PartSum()
         {
-            var uniquePartCoordinates = SymbolCoordinates
-                .SelectMany(p => GetNeighborCoords(p.Row, p.Col)
-                    .Where(p => NumberGrid[p.Row][p.Col] is NumberCell))
-                .DistinctBy(p =>
+            var uniquePartCoordinates = 
+                GetSymbolLocations(_ => true)
+                .SelectMany(symbolCoord => 
+                    GetNeighborCoords(symbolCoord)
+                    .Where(partCoord => NumberGrid[partCoord.Row][partCoord.Col] is NumberCell))
+                .DistinctBy(partCoord =>
                 {
-                    var cell = NumberGrid[p.Row][p.Col] as NumberCell;
+                    var cell = NumberGrid[partCoord.Row][partCoord.Col] as NumberCell;
                     return cell!.Id;
                 });
 
-            return uniquePartCoordinates
-                .Sum(p =>
+            return uniquePartCoordinates.Sum(partCoord =>
+            {
+                var cell = NumberGrid[partCoord.Row][partCoord.Col] as NumberCell;
+                return cell!.Number;
+            });
+        }
+
+        public int GearSum()
+        {
+            return GetSymbolLocations('*'.Equals)
+
+                // Filter out non gear symbols (count of numbers around it is not 2)
+                .Where(symbolCoord =>
                 {
-                    var cell = NumberGrid[p.Row][p.Col] as NumberCell;
-                    return cell!.Number;
+                    var neighborCoords = GetNeighborCoords(symbolCoord);
+
+                    var numberNeighborCoords = neighborCoords
+                        .Where(c => NumberGrid[c.Row][c.Col] is NumberCell)
+                        .DistinctBy(c =>
+                        {
+                            var cell = NumberGrid[c.Row][c.Col] as NumberCell;
+                            return cell!.Id;
+                        });
+
+                    return numberNeighborCoords.Count() == 2;
+                })
+
+                // Get coordinates of the parts around them
+                .Select(symbolCoord => {
+
+                    var neighborCoords = GetNeighborCoords(symbolCoord);
+
+                    var numberNeighborCoords = neighborCoords
+                        .Where(c => NumberGrid[c.Row][c.Col] is NumberCell)
+                        .DistinctBy(c =>
+                        {
+                            var cell = NumberGrid[c.Row][c.Col] as NumberCell;
+                            return cell!.Id;
+                        });
+
+                    return numberNeighborCoords;
+                })
+ 
+                // Sum part number products for each gear
+                .Sum(partCoords =>
+                {
+                    // Multiply all part numbers around each gear 
+                    var value = partCoords.Select(coord =>
+                    {
+                        var cell = NumberGrid[coord.Row][coord.Col] as NumberCell;
+                        return cell!.Number;
+                    }).Aggregate((p, q) => p * q);
+
+                    
+                    return value;
                 });
         }
     }
@@ -78,7 +141,7 @@ public class Day03 : IDay
 
         var empty = Char('.').Map(_ => new EmptyCell() as dynamic);
 
-        var symbol = Satisfy(c => !"0123456789.\r\n".Contains(c)).Map(_ => new SymbolCell() as dynamic);
+        var symbol = Satisfy(c => !"0123456789.\r\n".Contains(c)).Map(c => new SymbolCell(c) as dynamic);
 
 
         var cell = Choice(number, empty, symbol);
@@ -92,25 +155,12 @@ public class Day03 : IDay
          
         var lines = Many1(line).Map(lines =>
         {
-            var arrays = lines
-                .Select(l => l
-                    .Cast<Cell>()
-                    .ToArray())
-                .Cast<Cell[]>()
-                .ToArray();
+            // Cast array element type from dynamic to Cell 
+            var arrays = lines.Select(l => l
+                    .Cast<Cell>().ToArray())
+                .Cast<Cell[]>().ToArray();
 
-            var coords = new HashSet<(int, int)>();
-
-            for(var i = 0; i < arrays.Length; ++i)
-            {
-                for(var j = 0; j < arrays[i].Length; ++j)
-                {
-                    if(arrays[i][j] is SymbolCell)
-                        coords.Add((i, j));
-                }
-            }
-
-            return new Schematic(coords, arrays);
+            return new Schematic(arrays);
         });
 
         return lines;
@@ -138,6 +188,21 @@ public class Day03 : IDay
 
     public string Part2(string input)
     {
-        return "";
+        var parser = BuildInputParser(); 
+
+        var result = parser.Parse(input);
+
+        string answer = string.Empty;
+        
+        result.CaseOf(
+            failure => answer = failure.Message,
+            success =>
+            {
+                var schematic = success.Value;
+                answer = $"{schematic.GearSum()}";
+            }
+        );
+
+        return answer;
     }
 }
