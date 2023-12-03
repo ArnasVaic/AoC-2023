@@ -114,6 +114,7 @@ public class Schematic(Cell[][] numberGrid) : IData
 
         // Sum all gear part number products
         .Sum(coord => coord.Select(CellNumber).Aggregate((p, q) => p * q))
+        
         .ToString();
 }
 
