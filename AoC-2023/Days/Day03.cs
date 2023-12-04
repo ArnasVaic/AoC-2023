@@ -1,9 +1,10 @@
+using AoC2023.Core;
 using System.Diagnostics.CodeAnalysis;
 using ParsecSharp;
 using static ParsecSharp.Parser;
 using static ParsecSharp.Text;
 using static System.Linq.Enumerable;
-using static AoC2023.CommonParsers;
+using static AoC2023.Utils.CommonParsers;
 
 namespace AoC2023.Days.Day03;
 

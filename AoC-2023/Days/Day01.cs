@@ -1,3 +1,5 @@
+using AoC2023.Core;
+
 namespace AoC2023.Days.Day01;
 
 public class Day01 : IDay

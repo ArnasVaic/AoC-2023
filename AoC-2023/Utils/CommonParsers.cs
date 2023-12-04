@@ -2,7 +2,7 @@ using ParsecSharp;
 using static ParsecSharp.Parser;
 using static ParsecSharp.Text;
 
-namespace AoC2023;
+namespace AoC2023.Utils;
 
 public static class CommonParsers
 {

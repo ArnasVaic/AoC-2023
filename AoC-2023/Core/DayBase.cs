@@ -1,15 +1,12 @@
-
 using ParsecSharp;
 
-namespace AoC2023;
+namespace AoC2023.Core;
 
-public interface IData
-{
-    public string Part1();
-
-    public string Part2();
-}
-
+/// <summary>
+/// Base class for specific day solutions. Divides the solution into two parts:
+/// Building a parser and then implementing an algorithm.
+/// </summary>
+/// <typeparam name="TData"></typeparam>
 public abstract class DayBase<TData> : IDay where TData : IData
 {
     protected abstract Parser<char, TData> BuildParser();
