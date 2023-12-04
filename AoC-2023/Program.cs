@@ -1,5 +1,6 @@
-﻿using System.Reflection;
-using System.Runtime.InteropServices;
+﻿using System.Xml.Linq;
+using HtmlAgilityPack;
+using Microsoft.Extensions.Configuration;
 
 namespace AoC2023;
 
@@ -75,12 +76,63 @@ public static class Program
         return null; 
     }
 
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var dayNumber = GetDayNumber(args);
 
         if(!dayNumber.HasValue)
             return;
+
+        var builder = new ConfigurationBuilder();
+        builder.SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
+        
+        IConfiguration config = builder.Build();
+
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("cookie", config["cookie"]);
+
+        var inputDir = config["InputsDirectory"];
+        var filename = $"{inputDir}/Day{dayNumber:D2}.txt";
+
+        var mainurl = $"https://adventofcode.com/2023/day/{dayNumber}/input";
+        var result = await client.GetAsync(mainurl);
+        var content = await result.Content.ReadAsStringAsync();
+
+        if(!File.Exists(filename))
+        {
+            if(!result.IsSuccessStatusCode)
+                Console.WriteLine($"Coud not fetch input for day {dayNumber:D2}: {content}");
+            else
+                File.WriteAllText(filename, content);
+        }
+
+        string[] miniFilenames = [
+            $"{inputDir}/Day{dayNumber:D2}_1.txt",
+            $"{inputDir}/Day{dayNumber:D2}_2.txt",];
+
+        var miniurl = $"https://adventofcode.com/2023/day/{dayNumber}";
+        result = await client.GetAsync(miniurl);
+        content = await result.Content.ReadAsStringAsync();
+        var doc = new HtmlDocument();
+        
+        if(!result.IsSuccessStatusCode)
+            Console.WriteLine($"Coud not fetch mini input for day {dayNumber:D2}: {content}");
+        else
+        {
+            doc.LoadHtml(content);
+            var resultNodes = doc.DocumentNode.SelectNodes("//pre/code");
+
+            if (resultNodes is null)
+                Console.WriteLine("Could not extract mini data.");
+            else
+            {
+                foreach (var (text, fn) in resultNodes.Select(x => x.InnerText).Zip(miniFilenames))
+                    if(!File.Exists(fn))
+                        File.WriteAllText(fn, text);
+            }
+        }
 
         var typeName = $"AoC2023.Days.Day{dayNumber:D2}.Day{dayNumber:D2}";
         var type = Type.GetType(typeName);

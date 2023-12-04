@@ -38,13 +38,13 @@ public class Day04 : DayBase<Solution>
 {
     protected override Parser<char, Solution> BuildParser()
     {
-        var card =          String("Card").Right(Spaces())  // card identifier followed by spaces
+        var card =          String("Card").Right(Blanks)  // card identifier followed by spaces
             .Right  (       Integer)                        // card id
             .Left   (       Char(':'))                      // separator
-            .Bind   (id =>  Many1(Spaces().Right(Integer))  // card numbers
-            .Bind   (ws =>  Spaces().Left(Char('|'))        // separator
-            .Right  (       Many1(Spaces().Right(Integer))  // winning numbers
-            .Left   (       String("\r\n"))
+            .Bind   (id =>  Many1(Blanks.Right(Integer))  // card numbers
+            .Bind   (ws =>  Blanks.Left(Char('|'))        // separator
+            .Right  (       Many1(Blanks.Right(Integer))  // winning numbers
+            .Left   (       NL)
             .Map    (ns =>  new Card(id, ws.ToHashSet(), ns.ToHashSet())))));
 
         return Many1(card)
