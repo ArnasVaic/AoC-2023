@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ParsecSharp;
 using static ParsecSharp.Parser;
 using static ParsecSharp.Text;
+using static AoC2023.CommonParsers;
 
 namespace AoC2023.Days.Day02;
 
@@ -57,13 +58,11 @@ public class Day02 : IDay
 
     public static Parser<char, IEnumerable<Game>> CreateInputParser()
     {
-        var integer = OneOf("123456789").Append(Many(DecDigit())).ToInt();
-        
         // color ::= red | green | blue
         var color = Choice(Colors.Select(c => String($"{c}".ToLower()).Map(_ => c)));
         
         // colorNumber ::= space number space color
-        var colorNumber = integer
+        var colorNumber = Integer
             .Between(Char(' '))
             .Bind(number => color.Map(color => (color, number)));
 
@@ -76,7 +75,7 @@ public class Day02 : IDay
         var game = 
 
             // Game {id}:
-            String("Game ").Right(integer).Left(Char(':'))
+            String("Game ").Right(Integer).Left(Char(':'))
 
             // sets of pairs of cube colors and their counts separated by ';'
             .Bind(id =>
@@ -87,7 +86,7 @@ public class Day02 : IDay
             });
 
         // games ::= game *(newline game)
-        var games = game.SeparatedBy(String("\r\n"));
+        var games = game.SeparatedBy(NL);
 
         return games;
     }

@@ -39,8 +39,8 @@ public class Day04 : DayBase<Solution>
     protected override Parser<char, Solution> BuildParser()
     {
         var card =          String("Card").Right(Blanks)  // card identifier followed by spaces
-            .Right  (       Integer)                        // card id
-            .Left   (       Char(':'))                      // separator
+            .Right  (       Integer)                      // card id
+            .Left   (       Char(':'))                    // separator
             .Bind   (id =>  Many1(Blanks.Right(Integer))  // card numbers
             .Bind   (ws =>  Blanks.Left(Char('|'))        // separator
             .Right  (       Many1(Blanks.Right(Integer))  // winning numbers

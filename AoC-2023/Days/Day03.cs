@@ -3,6 +3,7 @@ using ParsecSharp;
 using static ParsecSharp.Parser;
 using static ParsecSharp.Text;
 using static System.Linq.Enumerable;
+using static AoC2023.CommonParsers;
 
 namespace AoC2023.Days.Day03;
 
@@ -140,7 +141,7 @@ public class Day03 : DayBase<Schematic>
 
         var line = 
             Many1(cell)
-            .Left(String("\r\n"))
+            .Left(NL)
             .Map(cells => cells.SelectMany<dynamic, dynamic>(c =>
             {
                 return Enumerable.Repeat(c, c is NumberCell numberCell? $"{numberCell.Number}".Length : 1);
