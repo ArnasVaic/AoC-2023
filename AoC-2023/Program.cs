@@ -36,8 +36,8 @@ public static class Program
             return;
         } 
 
-        var miniText = mini ? "-mini" : string.Empty;
-        var inputFileName = $"Inputs/Day{dayNumber:D2}-part{number}{miniText}.txt";
+        var miniText = mini ? $"_{number}" : string.Empty;
+        var inputFileName = $"Inputs/Day{dayNumber:D2}{miniText}.txt";
 
         miniText = mini ? "mini" : "full";
         try

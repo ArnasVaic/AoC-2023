@@ -118,7 +118,7 @@ public class Schematic(Cell[][] numberGrid) : IData
         .ToString();
 }
 
-public class Day03 : DayBase<Schematic>, IDay
+public class Day03 : DayBase<Schematic>
 {
     protected override Parser<char, Schematic> BuildParser()
     {
@@ -160,8 +160,4 @@ public class Day03 : DayBase<Schematic>, IDay
 
         return schematic;
     }
-
-    public string Part1(string input) => SolvePart1(input);
-
-    public string Part2(string input) => SolvePart2(input);
 }
