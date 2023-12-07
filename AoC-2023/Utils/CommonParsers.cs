@@ -6,15 +6,20 @@ namespace AoC2023.Utils;
 
 public static class CommonParsers
 {
+    /// <summary>
+    /// Unbounded integer.
+    /// </summary>
     public static readonly Parser<char, int> Integer = 
         OneOf("123456789")
         .Append(Many(DecDigit()))
         .ToInt();
 
+    /// <summary>
+    /// One or more space characters.
+    /// </summary>
     public static readonly Parser<char, Unit> Blanks =
         Many1(Char(' '))
         .Map(_ => Unit.Instance);
-
 
     /// <summary>
     /// Parser any variant of a new line.

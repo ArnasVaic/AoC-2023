@@ -30,7 +30,7 @@ public readonly struct Coord(int row, int col)
 };
 
 [method: SetsRequiredMembers]
-public class Schematic(Cell[][] numberGrid) : IData
+public class Schematic(Cell[][] numberGrid) : ISolutionData
 {
     public int Height => numberGrid.Length;
 
@@ -92,7 +92,7 @@ public class Schematic(Cell[][] numberGrid) : IData
         .Where(IsNumber)
         .DistinctBy(CellId);
 
-    public string Part1() =>
+    public string SolveFirst() =>
         // All symbol coordinates
         GetSymbolCoords(_ => true)
 
@@ -104,7 +104,7 @@ public class Schematic(Cell[][] numberGrid) : IData
 
         .ToString();
 
-    public string Part2() => 
+    public string SolveSecond() => 
         // '*' symbol coordinates
         GetSymbolCoords('*'.Equals)
         
@@ -120,14 +120,12 @@ public class Schematic(Cell[][] numberGrid) : IData
         .ToString();
 }
 
-public class Day03 : DayBase<Schematic>
+public class ParserBuilder : ISolutionDataParserBuilder<Schematic>
 {
-    protected override Parser<char, Schematic> BuildParser()
+    public Parser<char, Schematic> Build()
     {
-        var integer = OneOf("123456789").Append(Many(DecDigit())).ToInt();
-
         var number = 
-            integer
+            Integer
             .Map(num => new NumberCell(num, Guid.NewGuid()) as dynamic);
 
         var empty = 

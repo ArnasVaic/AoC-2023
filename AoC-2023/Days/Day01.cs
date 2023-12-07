@@ -1,10 +1,26 @@
 using AoC2023.Core;
+using ParsecSharp;
+using static ParsecSharp.Parser;
+using static ParsecSharp.Text;
 
 namespace AoC2023.Days.Day01;
 
-public class Day01 : IDay
+public class Data(string input) : ISolutionData
 {
-    public string Part1(string input)
+    private static readonly Dictionary<string, int> NumberLut = new()
+    {
+        { "one", 1 },
+        { "two", 2 },
+        { "three", 3 },
+        { "four", 4 },
+        { "five", 5 },
+        { "six", 6 },
+        { "seven", 7 },
+        { "eight", 8 },
+        { "nine", 9 },
+    };
+
+    public string SolveFirst()
     {
         var number = input
             .Split('\n')
@@ -19,20 +35,7 @@ public class Day01 : IDay
         return $"{number}";
     }
 
-    private static readonly Dictionary<string, int> NumberLut = new()
-    {
-        { "one", 1 },
-        { "two", 2 },
-        { "three", 3 },
-        { "four", 4 },
-        { "five", 5 },
-        { "six", 6 },
-        { "seven", 7 },
-        { "eight", 8 },
-        { "nine", 9 },
-    };
- 
-    public string Part2(string input)
+    public string SolveSecond()
     {
         var number = input
             .Split('\n')
@@ -73,4 +76,10 @@ public class Day01 : IDay
         
         return $"{number}";
     }
+}
+
+public class ParserBuilder : ISolutionDataParserBuilder<Data>
+{
+    public Parser<char, Data> Build() =>
+        Many1(Any()).Map(chars => new Data(string.Concat(chars)));
 }

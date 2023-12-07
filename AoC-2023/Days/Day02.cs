@@ -7,15 +7,19 @@ using static AoC2023.Utils.CommonParsers;
 
 namespace AoC2023.Days.Day02;
 
-public class Day02 : IDay
+public enum Color
 {
+    Red,
+    Green,
+    Blue
+}
 
-    public enum Color
-    {
-        Red,
-        Green,
-        Blue
-    }
+[method: SetsRequiredMembers]
+public class Game(int id, IEnumerable<Dictionary<Color, int>> sets)
+{
+    public int Id { get; init; } = id;
+
+    public required IEnumerable<Dictionary<Color, int>> Sets { get; init; } = sets;
 
     public static readonly Dictionary<Color, int> CubeCount = new()
     {
@@ -26,41 +30,48 @@ public class Day02 : IDay
 
     public static readonly HashSet<Color> Colors = [.. CubeCount.Keys];
 
-    [method: SetsRequiredMembers]
-    public class Game(int id, IEnumerable<Dictionary<Color, int>> sets)
+    public int MinPower()
     {
-        public int Id { get; init; } = id;
-
-        public required IEnumerable<Dictionary<Color, int>> Sets { get; init; } = sets;
-
-        public int MinPower()
+        Dictionary<Color, int> minimum = new()
         {
-            Dictionary<Color, int> minimum = new()
+            {Color.Red, 0},
+            {Color.Green, 0}, 
+            {Color.Blue, 0}, 
+        };
+        foreach(var set in Sets)
+        {
+            foreach(var color in Colors)
             {
-                {Color.Red, 0},
-                {Color.Green, 0}, 
-                {Color.Blue, 0}, 
-            };
-            foreach(var set in Sets)
-            {
-                foreach(var color in Colors)
-                {
-                    if(set.TryGetValue(color, out int value) && minimum[color] < value)
-                        minimum[color] = value;
-                }
+                if(set.TryGetValue(color, out int value) && minimum[color] < value)
+                    minimum[color] = value;
             }
-
-            return minimum.Values.Aggregate((a, b) => a * b);
         }
 
-        public bool Ok() => Sets
-            .All(set => CubeCount.All(pair => !set.ContainsKey(pair.Key) || set[pair.Key] <= pair.Value));
+        return minimum.Values.Aggregate((a, b) => a * b);
     }
 
-    public static Parser<char, IEnumerable<Game>> CreateInputParser()
+    public bool Ok() => Sets
+        .All(set => CubeCount.All(pair => !set.ContainsKey(pair.Key) || set[pair.Key] <= pair.Value));
+}
+
+public class Data(IEnumerable<Game> games) : ISolutionData
+{
+    public string SolveFirst() => games
+        .Where(game => game.Ok())
+        .Sum(game => game.Id)
+        .ToString();
+
+    public string SolveSecond() => games
+        .Sum(game => game.MinPower())
+        .ToString();
+}
+
+public class ParserBuilder : ISolutionDataParserBuilder<Data>
+{
+    public Parser<char, Data> Build()
     {
         // color ::= red | green | blue
-        var color = Choice(Colors.Select(c => String($"{c}".ToLower()).Map(_ => c)));
+        var color = Choice(Game.Colors.Select(c => String($"{c}".ToLower()).Map(_ => c)));
         
         // colorNumber ::= space number space color
         var colorNumber = Integer
@@ -87,24 +98,6 @@ public class Day02 : IDay
             });
 
         // games ::= game *(newline game)
-        var games = game.SeparatedBy(NL);
-
-        return games;
+        return game.SeparatedBy(NL).Map(games => new Data(games));
     }
-
-    private static IEnumerable<Game> GetGames(string input) =>
-        CreateInputParser()
-        .Parse(input)
-        .Value;
-
-    public string Part1(string input) => 
-        GetGames(input)
-        .Where(game => game.Ok())
-        .Sum(game => game.Id)
-        .ToString();
-
-    public string Part2(string input) => 
-        GetGames(input)
-        .Sum(game => game.MinPower())
-        .ToString();
 }

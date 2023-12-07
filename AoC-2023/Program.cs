@@ -3,6 +3,7 @@ using System.Reflection;
 using AoC2023.Core;
 using HtmlAgilityPack;
 using Microsoft.Extensions.Configuration;
+using ParsecSharp;
 using static System.AppDomain;
 using static System.String;
 
@@ -95,81 +96,121 @@ public static class Program
         Directory.SetCurrentDirectory(directoryBackup);
     }
 
-    private static void HandleDayPart(
-        IConfiguration configuration,
-        IDay solver, 
-        Type type, 
-        int day, 
-        int part,
-        bool mini)
+    private record DayInfo(int Day, int Part, bool Mini);
+
+    private static readonly Func<int, List<DayInfo>> BuildDayInfo = day =>
+    [
+        new(day, 1, true),
+        new(day, 1, false),
+        new(day, 2, true),
+        new(day, 2, false),
+    ];
+
+    private static void HandleDay(IConfiguration configuration, dynamic parser, DayInfo dayInfo)
     {
         var assemblyPath = Assembly.GetEntryAssembly()!.Location;
         var assemblyDirectory = Path.GetDirectoryName(assemblyPath);
         Directory.SetCurrentDirectory(assemblyDirectory!);
 
-        var methodName = $"Part{part}";
-        var methodInfo = type.GetMethod(methodName);
+        var miniText = dayInfo.Mini ? $"_{dayInfo.Part}" : Empty;
+        var inputFileName = $"{configuration["inputFileDirectory"]}/Day{dayInfo.Day:D2}{miniText}.txt";
         var stopwatch = new Stopwatch();
-
-        if(methodInfo is null)
-        {
-            Console.WriteLine($"Could not get method {methodName} info from type {type}.");
-            return;
-        } 
-
-        var miniText = mini ? $"_{part}" : Empty;
-        var inputFileName = $"{configuration["inputFileDirectory"]}/Day{day:D2}{miniText}.txt";
-
-        miniText = mini ? "mini" : "full";
+        miniText = dayInfo.Mini ? "mini" : "full";
         try
         {
-            object[] methodArg = [File.ReadAllText(inputFileName)];
-
-            TextWriter backup = Console.Out;
-            if(!mini)
-            {
-                Console.SetOut(TextWriter.Null);
-            }
-
+            var input = File.ReadAllText(inputFileName);
             stopwatch.Start();
-            var answer = methodInfo.Invoke(solver, methodArg);
+            var ans = dayInfo.Part is 1 ? SolveFirst(input, parser) : SolveSecond(input, parser);
             stopwatch.Stop();
-
-            Console.SetOut(backup);
-
-            Console.WriteLine($"[{miniText}, Part {part}, t = {stopwatch.ElapsedMilliseconds}ms]: {answer}");
+            Console.WriteLine($"[{miniText}, Part {dayInfo.Part}, t = {stopwatch.ElapsedMilliseconds}ms]: {ans}");
         }
         catch(Exception ex)
         {
             stopwatch.Stop();
-            Console.WriteLine($"[{miniText}, Part {part}, t = {stopwatch.ElapsedMilliseconds}]: {ex.Message}");
+            Console.WriteLine($"[{miniText}, Part {dayInfo.Part}, t = {stopwatch.ElapsedMilliseconds}ms]: {ex.Message}");
         }
+    } 
+
+    private static string Solve<TSolutionData>(
+        string input,
+        Parser<char, TSolutionData> parser,
+        Func<TSolutionData, string> getSolution) where TSolutionData : ISolutionData
+    {
+        var answer = "empty answer";
+        var result = parser.Parse(input);
+        result.CaseOf(
+            failure => answer = failure.Message,
+            success => answer = getSolution(success.Value)
+        );
+        return answer;  
     }
+
+    private static string SolveFirst<TSolutionData>(
+        string input,
+        Parser<char, TSolutionData> parser) 
+        where TSolutionData : ISolutionData =>
+        Solve(input, parser, d => d.SolveFirst());
+
+    private static string SolveSecond<TSolutionData>(
+        string input,
+        Parser<char, TSolutionData> parser) 
+        where TSolutionData : ISolutionData =>
+        Solve(input, parser, d => d.SolveSecond());
 
     private static void Run(IConfiguration configuration, int day)
     {
-        var typeName = $"AoC2023.Days.Day{day:D2}.Day{day:D2}";
-        var type = Type.GetType(typeName);
-            
-        if(type is null)
+        var @namespace =  $"AoC2023.Days.Day{day:D2}";
+
+        var solutionDataTypes = Assembly
+            .GetExecutingAssembly()
+            .GetTypes()
+            .Where(type => type.Namespace == @namespace)
+            .Where(type => type.GetInterface(nameof(ISolutionData)) != null);
+
+        if(solutionDataTypes.Count() != 1)
         {
-            Console.WriteLine($"Type '{typeName}' does not exist.");
+            Console.WriteLine($"Exactly one class should implement the ISolutionData interface per namespace");
             return;
         }
 
-        dynamic instance = Activator.CreateInstance(type, [])!;
+        var solutionDataType = solutionDataTypes.First();
+        
+        var solveFstMi = solutionDataType.GetMethod(nameof(ISolutionData.SolveFirst));
+        var solveSndMi = solutionDataType.GetMethod(nameof(ISolutionData.SolveSecond));
 
-        if(instance is null)
+        var parserBuilderInterfaceType = typeof(ISolutionDataParserBuilder<>)
+            .MakeGenericType(solutionDataType);
+
+        var solutionDataParserBuilderTypes = Assembly
+            .GetExecutingAssembly()
+            .GetTypes()
+            .Where(type => type.Namespace == @namespace)
+            .Where(type => type.GetInterface(parserBuilderInterfaceType.Name) != null);
+
+        if(solutionDataParserBuilderTypes.Count() != 1)
         {
-            Console.WriteLine($"Could not created instance of type '{typeName}'.");
+            Console.WriteLine($"Exactly one class should implement the ISolutionData interface per namespace");
             return;
         }
 
+        var solutionDataParserBuilderType = solutionDataParserBuilderTypes.First();
+
+        dynamic solutionDataParserBuilder = Activator.CreateInstance(solutionDataParserBuilderType, [])!;
+        var buildParserMethodInfo = solutionDataParserBuilderType.GetMethod("Build");
+
+        if(buildParserMethodInfo is null)
+        {
+            Console.WriteLine("Could not find method 'Build'.");
+            return;
+        }
+
+        var parser = buildParserMethodInfo!.Invoke(solutionDataParserBuilder, Array.Empty<object>());
+        
         Console.WriteLine($"[Day {day}]");
-        HandleDayPart(configuration, instance, type, day, 1, true);
-        HandleDayPart(configuration, instance, type, day, 1, false);
-        HandleDayPart(configuration, instance, type, day, 2, true);
-        HandleDayPart(configuration, instance, type, day, 2, false);
+        foreach(var info in BuildDayInfo(day))
+        {
+            HandleDay(configuration, parser, info);
+        }
     }
 
     public static async Task Main(string[] args)
@@ -208,9 +249,9 @@ public static class Program
             }
         }
         
-        Run(configuration, 2);
+        Run(configuration, 1);
 
         Console.WriteLine("Usage:");
-        Console.WriteLine($"\t{CurrentDomain.FriendlyName} {{ fetch | run }} [day]");
+        Console.WriteLine($"\t{CurrentDomain.FriendlyName} {{ fetch | solve }} [day]");
     }
 }
