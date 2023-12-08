@@ -139,7 +139,7 @@ public static class Program
         var answer = "empty answer";
         var result = parser.Parse(input);
         result.CaseOf(
-            failure => answer = failure.Message,
+            failure => answer = $"{failure.Message}",
             success => answer = getSolution(success.Value)
         );
         return answer;  
@@ -249,7 +249,7 @@ public static class Program
             }
         }
         
-        Run(configuration, 1);
+        Run(configuration, 5);
 
         Console.WriteLine("Usage:");
         Console.WriteLine($"\t{CurrentDomain.FriendlyName} {{ fetch | solve }} [day]");

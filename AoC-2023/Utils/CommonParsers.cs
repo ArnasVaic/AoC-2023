@@ -15,6 +15,14 @@ public static class CommonParsers
         .ToInt();
 
     /// <summary>
+    /// Unbounded long.
+    /// </summary>
+    public static readonly Parser<char, long> Long = 
+        OneOf("123456789")
+        .Append(Many(DecDigit()))
+        .ToLong();
+
+    /// <summary>
     /// One or more space characters.
     /// </summary>
     public static readonly Parser<char, Unit> Blanks =
