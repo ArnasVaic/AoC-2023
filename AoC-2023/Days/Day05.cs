@@ -3,19 +3,30 @@ using ParsecSharp;
 using static ParsecSharp.Text;
 using static ParsecSharp.Parser;
 using static AoC2023.Utils.CommonParsers;
+using System.Runtime.InteropServices;
 
 namespace AoC2023.Days.Day05;
 
 public class SolutionData(
     IEnumerable<long> seeds,
-    IEnumerable<Func<long , long>> convertCategory
+    IEnumerable<Func<long , long>> converters
 ) : ISolutionData
 {
 
     public string SolveFirst()
     {
-        var s = seeds;
-        return "";
+        var locations = seeds.Select(s =>
+        {
+            var current = s;
+            foreach (var converter in converters)
+            {
+                current = converter(current);
+            }
+            return current;
+        });
+
+        var ans = locations.Min();
+        return $"{ans}";
     }
 
     public string SolveSecond()
@@ -42,29 +53,34 @@ public class ParserBuilder : ISolutionDataParserBuilder<SolutionData>
 
     public Parser<char, SolutionData> Build()
     {
-        var twoNL = Parser.Repeat(NL, 2);
+        var twoNL = Parser.Repeat(NewLine(), 2);
 
         var seeds = String("seeds: ")
-            .Right(Long.SeparatedBy(Char(' ')));
+            .Right(Long.SeparatedBy(Char(' ')))
+            .Left(twoNL);
 
-        var mapline =       Long
-            .Bind   (dst => Long
-            .Bind   (src => Long
+        var mapLine =       Long.Left(Char(' '))
+            .Bind   (dst => Long.Left(Char(' '))
+            .Bind   (src => Long.Left(NL) 
             .Map    (cnt => (src, dst, cnt))));
 
-        var map = 
-            TakeWhile(c => c != ':').Right(Char(':')).Right(NL)
-            .Right(Many1(mapline).Left(NL))
+        var mapHeader = TakeWhile(c => c != '\n').Left(NewLine());
+
+        var map = mapHeader
+            .Right(Many1(mapLine))
             .Map(BuildFunc);
 
-        // return seeds.Left(NL)
-        //    .Bind(ss => Many1(map).Between(Parser.Repeat(NL, 2))
-        //    .Map(fns => new SolutionData(ss, fns)))
-        //    .Left(NL);
+        return      seeds
+           .Bind(   ss => Parser.Repeat(map, 7) // .Between(NL)
+           .Map (   fns => new SolutionData(ss, fns)));
+           //.Left(   NL);
 
-        return 
-            seeds.Left(twoNL)
-            .Bind(ss => map
-            .Map(fn => new SolutionData(ss, [fn])));
+        return seeds.Bind(ss => 
+            map
+            .Map(line =>
+        {
+            Console.WriteLine(line);
+            return new SolutionData(ss, null);
+        }));
     }
 }
