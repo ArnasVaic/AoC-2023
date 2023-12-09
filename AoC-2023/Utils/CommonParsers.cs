@@ -9,7 +9,8 @@ public static class CommonParsers
     /// <summary>
     /// Unbounded integer.
     /// </summary>
-    public static readonly Parser<char, int> Integer = 
+    public static readonly Parser<char, int> Integer =
+        Char('0').Map(_ => 0) |
         OneOf("123456789")
         .Append(Many(DecDigit()))
         .ToInt();
@@ -17,7 +18,8 @@ public static class CommonParsers
     /// <summary>
     /// Unbounded long.
     /// </summary>
-    public static readonly Parser<char, long> Long = 
+    public static readonly Parser<char, long> Long =
+        Char('0').Map(_ => 0L) |
         OneOf("123456789")
         .Append(Many(DecDigit()))
         .ToLong();
